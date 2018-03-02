@@ -25,4 +25,5 @@ Create the MF3D object giving it the SNR cube, and the spatial template sizes, a
 	MF_c=MF3D(data,[0,3,6,9,12,15],[4,8,12,16,20])
 
 
-
+The templates are circular 2D gaussians, and frequency 1D gaussians. Sizes are provided as FWHM, in pixels and channels, respectively.
+Template matching is achieved when the frequency width is the same as the source line width. For the spatial size, things are different because of the correlated nature of interferometric noise (i.e., the beam). Point-like templates (size=0) are required to select unresolved sources, larger templates select slightly extended sources of increasing size. The relation between template spatial size and selected source size is complicated and best assessed by running simulations with fake injected sources. An approximate matching formula is given by $\sigma_A^2$=$\sigma_h^2+2\sigma^b^2$, where $\sigma_A$ is the convolved size (i.e., observed) of the source, $\sigma_h$ is the template size and $\sigma_b$ is the beam size. We recommend always including the 0-size template, to capture point-sources.
