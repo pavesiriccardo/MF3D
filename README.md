@@ -40,4 +40,19 @@ Other hyper-parameters that may need tuning are the
 	
 conditions inside the make_reduint_(positive, negative) functions. These are the conditions for identifying candidates selected in different templates, as belonging to the same line feature. The spatial part is set to a radial separation of 5 pixels, and the channel separation corresponds to 15 channels. These may need tuning for your specific cases, and more complex criteria may be attempted as well using different thresholds for different templates. We did not find significant differences of any importance, but be aware of these parameters. Again, make sure these parameters match for positive and negatives!
 
+Output:
+Mostly, you'll care about these files: working/reduint_negative.dat, working/reduint_positive.dat
+These are cPickle files containing a python list, each. Read them back with:
+
+	import cPickle
+	inp=open('working/reduint_positive.dat')
+	positive_features=cPickle.load(inp)
+	inp.close()
+
+The list contains all features down to a SNR=4, each feature is a tuple with this structure:
+	
+	(SNR, (x_pos,y_pos,chan_pos), Ntempl_detect, (peak_spat,peak_freq))
+
+Where the position in the cube is given in pixels and channel, Ntempl_detect is the number of templates for which this feature is detected above SNR=4, and the peak_spat and peak_freq contain the sizes of the template that gives the highest SNR (reported), i.e., the best-matching template.
+
 Good luck!
