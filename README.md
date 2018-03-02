@@ -1,7 +1,8 @@
 # MF3D
-Line searching interferometric data cubes
+Line searching interferometric data cubes. Developed for the COLDz VLA project, See Pavesi et al., 2018a, submitted, for a description.
 
-To start you need to produce a signal-to-noise cube, i.e., you have to normalize your data cube so that the noise is everywhere equal to one. If your cube just came out of CLEAN, and the noise is spatially uniform, this may just require going through your cube channel by channel and dividing by the standard deviation of each channel (if your noise is spatially varying, you can read my paper for techniques to deal with it).
+Basics:
+To start, you need to produce a signal-to-noise cube, i.e., you have to normalize your data cube so that the noise is everywhere equal to one. If your cube just came out of CLEAN, and the noise is spatially uniform, this may just require going through your cube channel by channel and dividing by the standard deviation of each channel (if your noise is spatially varying, you can read my paper for techniques to deal with it).
 
 	f=pyfits.open(fits_file_name)
 	data=f[0].data     #If you have a degenerate first axis, use  f[0].section[0] instead
@@ -20,16 +21,17 @@ Import the MF3D class with something like:
 
 	from MF3D_class import MF3D
 
-Create the MF3D object giving it the SNR cube, and the spatial template sizes, and channel template widths.
+Create the MF3D object giving it the SNR cube, the spatial template sizes, and channel template widths (see below for details).
 
 	MF_c=MF3D(data,[0,3,6,9,12,15],[4,8,12,16,20])
 
 
+Choosing template sizes:
 The templates are circular 2D gaussians, and frequency 1D gaussians. Sizes are provided as FWHM, in pixels and channels, respectively.
 Template matching is achieved when the frequency width is the same as the source line width. For the spatial size, things are different because of the correlated nature of interferometric noise (i.e., the beam). Point-like templates (size=0) are required to select unresolved sources, larger templates select slightly extended sources of increasing size. The relation between template spatial size and selected source size is complicated and best assessed by running simulations with fake injected sources. An approximate matching formula is given by $\sigma_A^2$=$\sigma_h^2+2\sigma_b^2$, where $\sigma_A$ is the convolved size (i.e., observed) of the source, $\sigma_h$ is the template size and $\sigma_b$ is the beam size. We recommend always including the 0-size template, to capture point-sources.
 
-
-The MF3D class may need to be modified in different ways. FOr example, the integer variable "num_blocks" determined how many blocks the cube is split into (along each axis) when taking the FFT, it's fastest to keep it small, but large cubes may need more splits to keep the memory usage within the available RAM.
+More techincal details:
+The MF3D class may need to be modified in different ways. For example, the integer variable "num_blocks" determined how many blocks the cube is split into (along each axis) when taking the FFT, it's fastest to keep it small, but large cubes may need more splits to keep the memory usage within the available RAM.
 Another possible change may be to the freq_rang, and spat_rang variables in the make_combined_(positives, negatives) functions. These are the sizes of the small cubes used to find local peaks of the matched filtered cubes. It's unlikely to make a large difference, but be careful. Make sure these parameters match for positive and negatives!
 
 Other hyper-parameters that may need tuning are the 
