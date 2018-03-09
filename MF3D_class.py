@@ -20,7 +20,6 @@ class MF3D(object):
 		self.SNR=np.where(self.SNR==1.,0,self.SNR)
 		self.spatial_fwhms=spatial_fwhms
 		self.freq_fwhms=freq_fwhms
-		num_blocks=2        #How many blocks (per axis) do we want to split the cube into, to reduce memory usage. Keep it as low as your RAM allows you to (2 or 3, perhaps)
 	def make_FTSNR(self):   #this makes the complex conjugate of the FT of the SNR, need that because the convolution requires IFT(product) which is equivalent to FT(prod_conjugate)_conjugate/Npix, the template and the final are real so those are not affected by conjugate
 		os.mkdir('working')
 		ax0=np.memmap('working/ax0',dtype='complex64',mode='w+',shape=(self.Nchan, self.Nypix,self.Nxpix))
@@ -41,6 +40,7 @@ class MF3D(object):
 		os.system('rm working/ax012')
 		del ax012
 	def my_fft(self,inp_arr,outp_arr,axis):
+		num_blocks=2        #How many blocks (per axis) do we want to split the cube into, to reduce memory usage. Keep it as low as your RAM allows you to (2 or 3, perhaps)
 		def complete_ends(index,tot_length,error):
 			if tot_length-index<error:
 				return tot_length
