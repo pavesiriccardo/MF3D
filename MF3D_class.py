@@ -1,4 +1,18 @@
-#should take SNR map and Match filter, and return list
+"""
+Copyright (C) 2018, Riccardo Pavesi
+E-mail: pavesiriccardo3 -at- gmail.com
+
+Updated versions of the software are available through github:
+https://github.com/pavesiriccardo/MF3D
+ 
+If you have found this software useful for your research,
+I would appreciate an acknowledgment to the use of the
+"Matched Filtering in 3D for interferometry (MF3D) routines of Pavesi et al., (2018b)".
+[https://arxiv.org/abs/1808.04372]
+
+This software is provided as is without any warranty whatsoever.
+For details of permissions granted please see LICENCE.md
+"""
 import pyfits,gc
 import numpy as np
 import operator,cPickle
@@ -9,7 +23,26 @@ class MF3D(object):
 		return np.sqrt((pos1[0]-pos2[0])**2+(pos1[1]-pos2[1])**2+(pos1[2]-pos2[2])**2)
 	def dist2d(self,pos1,pos2):
 		return np.sqrt((pos1[0]-pos2[0])**2+(pos1[1]-pos2[1])**2)
-	def __init__(self,SNR,spatial_fwhms,freq_fwhms):   #SNR is numpy array, no degenerate axes please
+	def __init__(self,SNR,spatial_fwhms,freq_fwhms):   
+		 """
+
+    		This function initializes the class by loading the S/N data and the list of template sizes to use.
+    
+		    Parameters
+		    ----------
+		    SNR : np.ndarray of double
+			    The S/N data cube, no degenerate axes allowed.
+
+		    spatial_fwhms : np.ndarray of double
+			    Spatial size (as FWHM) of the circular 2D Gaussian template, in pixels.
+
+		    freq_fwhms : np.ndarray of double
+			    Frequency size (as FWHM) of the spectral 1D Gaussian template, in channels.
+
+		    Returns
+		    -------
+
+		    """
 		self.SNR=SNR
 		if len(self.SNR.shape)>3:
 			print 'More than 3 dimensions! Need to drop degenerate axes before giving me SNR cube'
@@ -20,7 +53,19 @@ class MF3D(object):
 		self.SNR=np.where(self.SNR==1.,0,self.SNR)
 		self.spatial_fwhms=spatial_fwhms
 		self.freq_fwhms=freq_fwhms
-	def make_FTSNR(self):   #this makes the complex conjugate of the FT of the SNR, need that because the convolution requires IFT(product) which is equivalent to FT(prod_conjugate)_conjugate/Npix, the template and the final are real so those are not affected by conjugate
+	def make_FTSNR(self):   
+		 """
+
+		    This function calculates the complex conjugate of the FT of the SNR. We need that because the convolution requires IFT(product) which is equivalent to FT(prod_conjugate)_conjugate/Npix, the template and the final are real so those are not affected by conjugate.
+		Creates "working" folder and uses memmaps to handle large data volumes. The output is stored in "working/FTSNR_conjugated".
+
+		    Parameters
+		    ----------
+
+		    Returns
+		    -------
+
+		"""
 		os.mkdir('working')
 		ax0=np.memmap('working/ax0',dtype='complex64',mode='w+',shape=(self.Nchan, self.Nypix,self.Nxpix))
 		#ax0[:]=np.fft.fftn(self.SNR,axes=[0])
@@ -40,6 +85,23 @@ class MF3D(object):
 		os.system('rm working/ax012')
 		del ax012
 	def my_fft(self,inp_arr,outp_arr,axis):
+		 """
+
+		    This function calculates the FFT of a large data cube, along a single axis. It splits the axis length in num_blocks blocks, in order to only load a manageble data volume into the RAM.
+
+		    Parameters
+		    ----------
+			inp_arr: np.ndarray of double
+				The array to be FFT'ed, typically will be a memmap for handling large data volumes
+			outp_arr: np.ndarray of double
+				The output array, typically will be a memmap for handling large data volumes
+			axis: int
+				Axis index to be FFT'ed
+
+		    Returns
+		    -------
+
+		    """
 		num_blocks=2        #How many blocks (per axis) do we want to split the cube into, to reduce memory usage. Keep it as low as your RAM allows you to (2 or 3, perhaps)
 		def complete_ends(index,tot_length,error):
 			if tot_length-index<error:
@@ -60,6 +122,23 @@ class MF3D(object):
 	def gauss(self,x,mean,fw_hm):
 			return np.exp(-(x-mean)**2/fw_hm**2*2.7725887222397811)
 	def calc_templ(self,N1,N2,N3,templ_freq,spat_fwhm):
+		 """
+
+		    This function calculates the FFT of a 3D Gaussian template.
+
+		    Parameters
+		    ----------
+			N1,N2,N3: int or double
+				The sizes along three axes of the data cube.
+			templ_freq, spat_fwhm: double
+				The Gaussian template FWHM along the frequency and spatial dimension, in channels/pixels.
+
+		    Returns
+		    -------
+			np.ndarray of double 
+				The FFT of the 3D Gaussian template, with size N1,N2,N3
+
+		    """
 		fwhm=2.355
 		if spat_fwhm==0:
 			s1=1e-4/fwhm
@@ -82,6 +161,21 @@ class MF3D(object):
 		my_version*=normaliz
 		return np.fft.ifftshift(my_version)
 	def inverse_FFT(self,myarray,spat_width):
+		"""
+
+		    This function calculates the inverse FFT of a large data cube, along all 3 axes. 
+
+		    Parameters
+		    ----------
+			myarray: np.ndarray of double
+				The array to be FFT'ed, typically will be a memmap for handling large data volumes
+			spat_width: int
+				The spatial template size, to locate the appropriate working folder
+
+		    Returns
+		    -------
+
+		    """
 		ax0=np.memmap('working/MF_'+str(spat_width)+'pix/ax0',dtype='complex64',mode='w+',shape=(self.Nchan, self.Nypix,self.Nxpix))
 		self.my_fft(myarray,ax0,0)
 		gc.collect()
@@ -101,6 +195,19 @@ class MF3D(object):
 		os.system('rm working/MF_'+str(spat_width)+'pix/ax012')
 		return peaks
 	def match_filter(self,freq_width,spat_width):
+		 """
+
+		    This function calculates the Convolution of a 3D Gaussian template with the S/N data cube.
+
+		    Parameters
+		    ----------
+			freq_width,spat_width: int 
+				The Gaussian template FWHM along the frequency and spatial dimension, in channels/pixels.
+
+		    Returns
+		    -------
+
+		    """
 		N1=self.Nxpix
 		N2=self.Nypix
 		N3=self.Nchan
@@ -121,16 +228,54 @@ class MF3D(object):
 		os.system('rm working/MF_'+str(spat_width)+'pix/prod_temp')
 		print 'template '+str(int(freq_width))+' succesfully finished'
 	def run_frequencies_parallel(self,spat_width):
+		 """
+		 
+		    This function runs the Matched Filtering on the different frequency widths, for a fixed spatial size.
+		Right now it is executing them serially, but can easily be modified to run them in parallel if needed.
+		It is useful to run them as individual processes because the memory allocation is then freed upon completion.
+
+		    Parameters
+		    ----------
+			spat_width: int 
+				The Gaussian template FWHM along the spatial dimension, in channels/pixels.
+
+		    Returns
+		    -------
+
+
+		    """
 		from multiprocessing import Process,Pool
 		for width in self.freq_fwhms:
 			p=Process(target=self.match_filter, args=(width,spat_width,))
 			p.start()
 			p.join()
 	def run_allspat(self):
+		"""
+
+		    This function runs the Matched Filtering on the every spatial size, creating the appropriate working folder.
+
+		    Parameters
+		    ----------
+		    Returns
+		    -------
+
+
+		    """
 		for spat_fwh in self.spatial_fwhms:
 			os.mkdir('working/MF_'+str(spat_fwh)+'pix')
 			self.run_frequencies_parallel(spat_fwh)
 	def make_combined_negatives(self):
+		 """
+
+		    This function finds the peaks within each Matched Filtered data cube (i.e., for each template) above SNR threshold=4. Searches for negative lines.
+
+		    Parameters
+		    ----------
+		    Returns
+		    -------
+			'working/combined_dict_pickled_negative' contains the pickled python dictionary information with the positions of all the peaks, for each template combination (as keys).
+
+		    """
 		def find_tops_and_clump(peaks,tops,thresh,tag,conv_factor):
 			hipoints_chan,hipoints_y,hipoints_x=np.where(peaks<thresh*conv_factor) 
 			temp_tops=[]
@@ -171,6 +316,21 @@ class MF3D(object):
 		outpfil.close()
 		return conv_factors
 	def make_combined_positives(self,conv_factors):
+		 """
+
+		    This function finds the peaks within each Matched Filtered data cube (i.e., for each template) above SNR threshold=4. Searches for positive lines.
+		    The difference to the negatives is that there is no need to measure the Standard deviation of the Matched Filtered cubes anymore, so those values are re-utilized.
+
+		    Parameters
+		    ----------
+		    conv_factors: list of int
+		    	The noise level (std) of the Matched Filtered cubes, measured by make_combined_negatives
+			
+		    Returns
+		    -------
+			'working/combined_dict_pickled_positive' contains the pickled python dictionary information with the positions of all the peaks, for each template combination (as keys).
+
+		    """
 		def find_tops_and_clump(peaks,tops,thresh,tag,conv_factor):
 			hipoints_chan,hipoints_y,hipoints_x=np.where(peaks>thresh*conv_factor) 
 			temp_tops=[]
@@ -206,6 +366,17 @@ class MF3D(object):
 		cPickle.dump(combined,outpfil)
 		outpfil.close()
 	def make_reduint_positive(self):
+		 """
+
+		    This function combines the peaks from different templates, identifying them as corresponding to the same feature if falling within a local cluster. It calculates the moving average position of the peaks cluster and adopts the highest SNR as the feature SNR. The template which maximizes this SNR is the Matched filter and its size is saved in the output data structure.
+
+		    Parameters
+		    ----------
+		    Returns
+		    -------
+			'working/reduint_positive.dat' contains the pickled python dictionary information with the positions of all the merged peaks, the peak SNR and the template size which maximizes SNR.
+
+		"""
 		def distsq((a,b,c),(d,e,f)):
 			#return (1.*a-1.*d)**2+(1.*b-1.*e)**2+(1.*c-1.*f)**2
 			return (1.*a-1.*d)**2+(1.*b-1.*e)**2<25. and np.absolute(1.*c-1.*f)<15.     #You can change these, both the spatial radius^2 and channel thresholds which control line features merging across different templates
@@ -236,6 +407,17 @@ class MF3D(object):
 		outp.close()
 		return reduint
 	def make_reduint_negative(self):
+		 """
+
+		    This function combines the peaks from different templates, identifying them as corresponding to the same feature if falling within a local cluster. It calculates the moving average position of the peaks cluster and adopts the highest SNR as the feature SNR. The template which maximizes this SNR is the Matched filter and its size is saved in the output data structure.
+
+		    Parameters
+		    ----------
+		    Returns
+		    -------
+			'working/reduint_negative.dat' contains the pickled python dictionary information with the positions of all the merged peaks, the peak SNR and the template size which maximizes SNR.
+
+		"""
 		def distsq((a,b,c),(d,e,f)):
 			#return (1.*a-1.*d)**2+(1.*b-1.*e)**2+(1.*c-1.*f)**2
 			return (1.*a-1.*d)**2+(1.*b-1.*e)**2<25. and np.absolute(1.*c-1.*f)<15.   #You can change these, both the spatial radius^2 and channel thresholds which control line features merging across different templates
@@ -265,7 +447,24 @@ class MF3D(object):
 		cPickle.dump(reduint,outp)
 		outp.close()
 		return reduint
-	def remove_cont_sources(self,cont_source,reduint):	
+	def remove_cont_sources(self,cont_source,reduint):
+		 """
+
+		    This function allows removing line candidates which are too close to a continuum source and are therefore likely to be noise on top of continuum emission
+
+		    Parameters
+		    ----------
+			cont_source: list of triplets of int
+				list of continuum source coordinates in (xpix,ypix,chan) form
+			reduint: dictionary of lists
+				list of all line candidates in standard format defined above
+
+		    Returns
+		    -------
+			reduint_no_cont: dictionary of lists
+				list of all line candidates in standard format, with sources removed if lying spatially too close to continuum source
+
+		"""
 		reduint_no_cont=[]
 		for obj in reduint:
 			cont=False
@@ -276,6 +475,16 @@ class MF3D(object):
 				reduint_no_cont.append(obj)
 		return reduint_no_cont
 	def DOITALL(self):
+		 """
+
+		    This function runs a typical Matched Filtering routine from start to end.
+
+		    Parameters
+		    ----------
+		    Returns
+		    -------
+
+		"""
 		self.make_FTSNR()
 		self.run_allspat()
 		conv_factors=self.make_combined_negatives()
