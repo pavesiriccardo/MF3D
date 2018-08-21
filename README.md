@@ -1,5 +1,5 @@
 # MF3D
-Line searching interferometric data cubes. Developed for the COLDz VLA project, See Pavesi et al., 2018a, submitted, for a description.
+Line searching interferometric data cubes. Developed for the COLDz VLA project, See Pavesi et al., 2018b, (https://arxiv.org/abs/1808.04372), for a description.
 
 Basics:
 To start, you need to produce a signal-to-noise cube, i.e., you have to normalize your data cube so that the noise is everywhere equal to one. If your cube just came out of CLEAN, and the noise is spatially uniform, this may just require going through your cube channel by channel and dividing by the standard deviation of each channel (if your noise is spatially varying, you can read my paper for techniques to deal with it).
